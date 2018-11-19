@@ -26,6 +26,7 @@ library:
   - lens
   - mtl
   - ghc-prim
+  - kind-generics
   source-dirs: library
 
 executables:
