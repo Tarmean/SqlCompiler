@@ -8,7 +8,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
-module Example  (main, rewriting1, rewriting, toListM, foo) where
+{-# LANGUAGE DataKinds #-}
+module Example  (MonadRewrite(..), main, rewriting1, rewriting, toListM, foo) where
 import Control.Lens hiding (from, to, deep)
 import Control.Monad.Reader
 import Control.Monad.State
@@ -26,7 +27,9 @@ data Ex = Lit Int | BinOp BinOp Ex Ex
 instance GenericK BinOp 'LoT0 where
     type RepK BinOp = U1 :+: U1
 instance GenericK Ex 'LoT0 where
-   type RepK Ex = F (Kon Int) :+: (F (Kon BinOp) :*: F (Kon Ex) :*: F (Kon Ex))
+   type RepK Ex = F ('Kon Int) :+: (F ('Kon BinOp) :*: F ('Kon Ex) :*: F ('Kon Ex))
+instance Split Ex Ex 'LoT0 where
+instance Split BinOp BinOp 'LoT0 where
 makePrisms ''Ex
 
 instance (MonadEnv (Sum Int) f, AllChildren c Ex e f) => TraverseChild c Ex e f where

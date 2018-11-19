@@ -75,9 +75,9 @@ class DispatchChild (b :: Bool) (c :: Type -> Type -> (Type->Type) -> Constraint
 instance DispatchChild 'False c s t f where
     {-# INLINE dispatchChild #-}
     dispatchChild _f s = pure s
-instance (GChild c t (RepK s) f 'LoT0, GenericK s 'LoT0) => DispatchChild 'True c s t f where
+instance (Split s k x, GChild c t (RepK k) f x, GenericK k x) => DispatchChild 'True c s t f where
     {-# INLINE dispatchChild #-}
-    dispatchChild f s = fmap (toN @'Z) $ gchild @c @t f $ fromN @'Z s
+    dispatchChild f s = fmap (toF @k) $ gchild @c @t f $ fromF @k s
 
     
 -- Inlining this alias gives a type error - weird
@@ -109,34 +109,35 @@ instance (TraverseChildConstraint s f, TraverseChild BottomUp s a f) => BottomUp
 bottomup :: forall f s a. (Monad f, BottomUp s a f) => (a -> f a) -> s -> f s
 bottomup f a = bottomup' @(s == a) @s @a f a
 
-type Interesting s a = Fst (InterestingStep s '[] a)
+type Interesting s a =  Fst (InterestingStep s '[] a)
 
-type family InterestingStep (s::Type) seen a where
+type family InterestingStep (s::Type) (seen::[Type]) (a::Type) where
     InterestingStep Char    seen a = '( 'False, seen)
     InterestingStep Double  seen a = '( 'False, seen)
     InterestingStep Float   seen a = '( 'False, seen)
     InterestingStep Int     seen a = '( 'False, seen)
     InterestingStep Integer seen a = '( 'False, seen)
-    InterestingStep s       seen a = Interesting' (RepK s) seen a
-
-type family Interesting' m seen a :: (Bool, [Type]) where
-    Interesting' (M1 _ m f) seen a = Interesting' f seen a
-    Interesting' (l :*: r) seen a = InterestingBranch (Interesting' l seen a) r a
-    Interesting' (l :+: r) seen a = InterestingBranch (Interesting' l seen a) r a
-    Interesting' (F a) seen b = InterestingB' (Ty a 'LoT0 == b) a seen b
-    Interesting' U1 seen _ = '( 'False, seen)
-type family InterestingB' v a seen b where
-     InterestingB' 'True a seen b = '( 'True, seen)
-     InterestingB' 'False a seen b = InterestingRecurse (Elem (Ty a 'LoT0) seen) (Ty a 'LoT0) seen b
+    InterestingStep s       seen a = Interesting'' (RepK s) 'LoT0 seen a
 
 
+type family Interesting'' (m :: LoT k -> *) (x :: LoT k) (seen::[Type]) (a::Type) :: (Bool, [Type]) where
+    Interesting'' (M1 _ m f) x seen a = Interesting'' f x seen a
+    Interesting'' (l :*: r) x seen a = InterestingBranch' (Interesting'' l x seen a) r x a
+    Interesting'' (l :+: r) x seen a = InterestingBranch' (Interesting'' l x seen a) r x a
+    Interesting'' (F a) x seen b = InterestingRecurse'' (Ty a x == b) (Elem (Ty a x) seen) a x seen b
+    Interesting'' (E a) x seen b = Interesting'' a ('False :&&: x) seen b
+    Interesting'' U1 _ seen _ = '( 'False, seen)
 
-type family InterestingBranch b r a where
-    InterestingBranch '( 'True, ls) _ _ = '( 'True, ls)
-    InterestingBranch '( 'False, ls) r a = Interesting' r ls a
-type family InterestingRecurse b r seen a where
-    InterestingRecurse 'True r seen a = '( 'False, seen)
-    InterestingRecurse 'False r seen a = InterestingStep r (r ': seen) a
+type family Stop where
+type family InterestingRecurse'' (v1::Bool) (v2::Bool) (a::Atom d Type) (x :: LoT d) (seen :: [Type]) (b::Type) where
+     InterestingRecurse'' 'True _ a x seen b = '( 'True, seen)
+     InterestingRecurse'' 'False 'True a x seen b = '( 'False, seen)
+     InterestingRecurse'' 'False 'False r x seen a = InterestingStep (Ty r x) (Ty r x ': seen) a
+type family InterestingBranch' b r x a where
+    InterestingBranch' '( 'True, ls) _ _ _ = '( 'True, ls)
+    InterestingBranch' '( 'False, ls) r x a = Interesting'' r x ls a
+
+
 
 type family Elem a as where
     Elem a (a ': _) = 'True
