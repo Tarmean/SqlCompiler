@@ -117,6 +117,7 @@ type family InterestingStep (s::Type) (seen::[Type]) (a::Type) where
     InterestingStep Float   seen a = '( 'False, seen)
     InterestingStep Int     seen a = '( 'False, seen)
     InterestingStep Integer seen a = '( 'False, seen)
+    InterestingStep Bool seen a = '( 'False, seen)
     InterestingStep s       seen a = Interesting'' (RepK s) 'LoT0 seen a
 
 
@@ -125,7 +126,7 @@ type family Interesting'' (m :: LoT k -> *) (x :: LoT k) (seen::[Type]) (a::Type
     Interesting'' (l :*: r) x seen a = InterestingBranch' (Interesting'' l x seen a) r x a
     Interesting'' (l :+: r) x seen a = InterestingBranch' (Interesting'' l x seen a) r x a
     Interesting'' (F a) x seen b = InterestingRecurse'' (Ty a x == b) (Elem (Ty a x) seen) a x seen b
-    Interesting'' (E a) x seen b = Interesting'' a ('False :&&: x) seen b
+    -- Interesting'' (E a) x seen b = Interesting'' a ('False :&&: x) seen b
     Interesting'' U1 _ seen _ = '( 'False, seen)
 
 type family Stop where

@@ -43,14 +43,15 @@ foo = topdown . _Lit +~ 1
 
 main :: IO ()
 main = do
-    print $ bar testVal
+    print $ testVal
   where testVal = BinOp Add (Lit 2) (BinOp Add (Lit 3) (BinOp Add (Lit 0) (Lit 0)))
-bar :: Ex -> Ex
-bar = rewriting bottomup
-  $ do
-      i <- cur
-      Sum e <- environment
-      return (i + e :: Int)
+
+-- bar :: Ex -> Ex
+-- bar = rewriting bottomup
+--   $ do
+--       i <- cur
+--       Sum e <- environment
+--       return (i + e :: Int)
       
   -- $ do
   --   (Lit x, Lit y) <- cur _Add
@@ -83,7 +84,7 @@ data Env e i
   }
 
 
-rewriting :: (Monoid i) => ((a -> Reader i  a) -> s -> Reader i s) -> (ReaderT (Env a i) Maybe a) -> s -> s
+rewriting :: ((a -> Reader ()  a) -> s -> Reader () s) -> (ReaderT (Env a ()) Maybe a) -> s -> s
 rewriting l f s = runReader (l step s) mempty
   where
      step  a = reader $ \i -> case runReaderT f (Env i a) of
