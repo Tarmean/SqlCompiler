@@ -9,7 +9,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
-module Example  (MonadRewrite(..), main, rewriting1, rewriting, toListM, foo) where
+module Example  (MonadRewrite(..), main, rewriting1, rewriting, toListM) where
 import Control.Lens hiding (from, to, deep)
 import Control.Monad.Reader
 import Control.Monad.State
@@ -18,7 +18,6 @@ import Generics.Kind
 
 import Control.Monad.Fail
 import TraverseChild
-import Data.Monoid
 
 data BinOp = Add | Mult
   deriving (Eq, Generic, Show)
@@ -32,14 +31,14 @@ instance Split Ex Ex 'LoT0 where
 instance Split BinOp BinOp 'LoT0 where
 makePrisms ''Ex
 
-instance (MonadEnv (Sum Int) f, AllChildren c Ex e f) => TraverseChild c Ex e f where
-    type instance TraverseChildConstraint Ex f = MonadEnv (Sum Int) f
-    child f a@(Lit _) = defaultChild @c @Ex @e f a
-    child f a = modifyEnv ((+1) :: (Sum Int) -> (Sum Int)) (defaultChild @c @Ex @e f a)
+-- instance (MonadEnv (Sum Int) f, AllChildren c Ex e f) => TraverseChild c Ex e f where
+--     type instance TraverseChildConstraint Ex f = MonadEnv (Sum Int) f
+--     child f a@(Lit _) = defaultChild @c @Ex @e f a
+--     child f a = modifyEnv ((+1) :: (Sum Int) -> (Sum Int)) (defaultChild @c @Ex @e f a)
 instance TraverseChild c BinOp e f where
 
-foo :: Ex -> Ex
-foo = topdown . _Lit +~ 1
+-- foo :: Ex -> Ex
+-- foo = topdown . _Lit +~ 1
 
 main :: IO ()
 main = do
