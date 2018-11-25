@@ -1,6 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeInType #-}
@@ -11,21 +10,15 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-module TraverseChild where
+module TraverseChild (topdown, bottomup, AllChildren, TraverseChild, TopDown, BottomUp, toListM) where
+import OrphanInstances()
 import GHC.Types hiding (Nat)
 -- import GHC.TypeLits
 -- import GHC.Generics
 import Data.Type.Equality
-import Control.Lens hiding (from, to, deep)
 import Control.Monad.Writer hiding (Any)
-import Control.Monad.Reader
 import Generics.Kind
 
 type AllChildren c s t f= DispatchChild (Interesting s t) c s t f
@@ -49,12 +42,12 @@ instance TraverseChild c Char e f where
 defaultChild :: forall c s t f. (AllChildren c s t f, Applicative f) => (forall a. (TraverseChildConstraint a f, c a t f) => a -> f a) ->  s -> f s
 defaultChild f a = dispatchChild @(Interesting s t) @c @s @t @f f a
 
-class MonadEnv s f where
-    modifyEnv :: (s -> s) -> f a -> f a
-instance MonadEnv s Identity where
-    modifyEnv _ m = m
-instance MonadEnv s (Reader s) where
-    modifyEnv s m = local s m
+-- class MonadEnv s f where
+--     modifyEnv :: (s -> s) -> f a -> f a
+-- instance MonadEnv s Identity where
+--     modifyEnv _ m = m
+-- instance MonadEnv s (Reader s) where
+--     modifyEnv s m = local s m
 
 toListM :: ((a -> Writer (Endo [a]) a) -> (s -> Writer (Endo [a]) s)) -> s -> [a]
 toListM l s = case runWriter $ l step s of
@@ -128,7 +121,8 @@ type family CountM (t::v) :: Nat where
   CountM  (t a) = 'S (CountM t)
   CountM   t    = 'Z
 
-type Interesting (s::Type) (a::Type) =  Fst (Interesting'Dispatch s a '[s])
+-- don't use s here in case it has free type variables
+type Interesting (s::Type) (a::Type) =  Fst (Interesting'Dispatch s a '[])
 type Interesting'Dispatch s seen a = Interesting'Helper s (SplitN (CountM s) s) a seen
 type family Interesting'Helper s (t::TyEnv) a seen  where
     Interesting'Helper s ('TyEnv l r) a seen = InterestingStep s (RepK l) r a seen
@@ -171,9 +165,3 @@ type family Elem a as where
 type family Snd (k::(a, b)) :: b where
     Snd '(l, r) = r
 type family Fst a where Fst '(l, r) = l
-
-instance GenericK Maybe (a ':&&: 'LoT0) where
-    type RepK Maybe = U1 :+: F V0
-type family StripAll a where
-    StripAll (a b) = a
-
